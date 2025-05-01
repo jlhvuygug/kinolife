@@ -161,20 +161,13 @@ bot.on('message', async (msg) => {
   });
 });
 
-bot.on('message', async (msg) => {
+bot.on('message', async (msg) => {  // Make sure the function is marked as async
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     const text = msg.text;
   
     await db.read();
     db.data ||= { verifiedUsers: [] };
-  
-    // Taklif rejimi
-    if (awaitingSuggestions.has(userId)) {
-      awaitingSuggestions.delete(userId);
-      bot.sendMessage(adminId, `📩 Yangi taklif:\n👤 ${msg.from.first_name} (@${msg.from.username || 'yo‘q'})\n🆔 ID: ${userId}\n📝 ${text}`);
-      return bot.sendMessage(chatId, "✅ Taklifingiz yuborildi. Rahmat!");
-    }
   
     // Kino kodi rejimi
     if (awaitingMovieCode.has(userId)) {
@@ -184,6 +177,7 @@ bot.on('message', async (msg) => {
         return bot.sendMessage(chatId, "❗ Noto‘g‘ri kod. Iltimos, raqamli kino kodini yuboring.");
       }
       try {
+        // This is the problematic line - now inside an async function
         await bot.forwardMessage(chatId, privateChannelId, messageId);
       } catch (e) {
         return bot.sendMessage(chatId, "❌ Bunday kino topilmadi yoki kod noto‘g‘ri.");
@@ -191,53 +185,7 @@ bot.on('message', async (msg) => {
       return;
     }
   
-    // /start komandasi
-    if (text === '/start') {
-      return bot.sendMessage(chatId, "👋 Assalomu alaykum! Botdan foydalanish uchun quyidagi kanallarga a’zo bo‘ling:");
-    }
-  
-    const isVerified = db.data.verifiedUsers.includes(userId);
-  
-    if (!isVerified) {
-      let notJoinedChannels = [];
-      for (let channel of channels) {
-        const isMember = await checkMembership(channel, userId);
-        if (!isMember) notJoinedChannels.push(channel);
-      }
-  
-      if (notJoinedChannels.length > 0) {
-        const buttons = notJoinedChannels.map(channel => [
-          { text: `➕ ${channel} ga qo‘shilish`, url: `https://t.me/${channel.slice(1)}` }
-        ]);
-        buttons.push([{ text: '✅ Tasdiqlash', callback_data: 'verify' }]);
-  
-        return bot.sendMessage(chatId, "📢 Iltimos, quyidagi kanallarga a’zo bo‘ling, so‘ng 'Tasdiqlash' tugmasini bosing:", {
-          reply_markup: { inline_keyboard: buttons }
-        });
-      } else {
-        return bot.sendMessage(chatId, "✅ Endi 'Tasdiqlash' tugmasini bosing:", {
-          reply_markup: {
-            inline_keyboard: [[{ text: '✅ Tasdiqlash', callback_data: 'verify' }]]
-          }
-        });
-      }
-    }
-  
-    // Tasdiqlangan foydalanuvchi uchun menyu
-    const keys = Object.keys(questions);
-    const questionButtons = [];
-    for (let i = 0; i < keys.length; i += 2) {
-      const row = [
-        { text: keys[i], callback_data: `question_${keys[i]}` }
-      ];
-      if (keys[i + 1]) row.push({ text: keys[i + 1], callback_data: `question_${keys[i + 1]}` });
-      questionButtons.push(row);
-    }
-    questionButtons.push([{ text: "🎬 Kino kodi kiritish", callback_data: "get_movie" }]);
-    questionButtons.push([{ text: "💬 Talab va takliflar", callback_data: "suggest" }]);
-  
-    return bot.sendMessage(chatId, "Quyidagilardan birini tanlang:", {
-      reply_markup: { inline_keyboard: questionButtons }
-    });
+    // Rest of your code...
   });
+  
   

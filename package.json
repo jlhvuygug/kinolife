@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "lowdb": "^7.0.1",
+    "node-telegram-bot-api": "^0.66.0"
+  }
+}

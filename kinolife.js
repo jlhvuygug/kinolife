@@ -7,7 +7,7 @@ const bot = new TelegramBot(token, { polling: true });
 const channels = ['@kinolifechannel'];
 
 // Yopiq kanal chat ID (masalan: -1001234567890)
-const mainChannelId = -1001234567890;
+const mainChannelId = 2542231954;
 
 // A'zolikni tekshiruvchi funksiya
 const checkMembership = async (channel, userId) => {

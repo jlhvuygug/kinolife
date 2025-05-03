@@ -19,23 +19,46 @@ const checkMembership = async (channel, userId) => {
   }
 };
 
+
 // Message kelganda ishlovchi funksiya
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const text = msg.text;
 
+  // Agar foydalanuvchi "✅ Tasdiqladim" tugmasini bossa
+  if (text === '✅ Tasdiqladim') {
+    let stillNotJoined = [];
+    for (let channel of channels) {
+      const isMember = await checkMembership(channel, userId);
+      if (!isMember) stillNotJoined.push(channel);
+    }
+
+    if (stillNotJoined.length === 0) {
+      bot.sendMessage(chatId, "✅ Endi siz barcha kanallarga a'zo bo'lgansiz. Iltimos, kino kodini kiriting (masalan: 5).");
+    } else {
+      let buttons = stillNotJoined.map(channel => {
+        return [{ text: `➕ Kanalga qo‘shilish`, url: `https://t.me/${channel.slice(1)}` }];
+      });
+      buttons.push([{ text: "✅ Tasdiqladim" }]); // qayta tekshirish tugmasi
+
+      const replyMarkup = {
+        inline_keyboard: buttons
+      };
+
+      bot.sendMessage(chatId, "❗ Hali ham quyidagi kanallarga a'zo bo'lishingiz kerak:", { reply_markup: replyMarkup });
+    }
+    return;
+  }
+
+  // Kino kodi yoki boshqa xabar
   try {
-    // 1. A'zolikni tekshirish
     let notJoinedChannels = [];
     for (let channel of channels) {
       const isMember = await checkMembership(channel, userId);
-      if (!isMember) {
-        notJoinedChannels.push(channel);
-      }
+      if (!isMember) notJoinedChannels.push(channel);
     }
 
-    // 2. Agar barcha kanallarga a'zo bo'lsa
     if (notJoinedChannels.length === 0) {
       if (!isNaN(text)) {
         try {
@@ -48,16 +71,19 @@ bot.on('message', async (msg) => {
         bot.sendMessage(chatId, "✅ Siz kanallarga a'zo bo'lgansiz. Kino kodi yuboring (masalan: 5)!");
       }
     } else {
-      // 3. A'zo bo'lmagan kanallar ro'yxati
       let buttons = notJoinedChannels.map(channel => {
         return [{ text: `➕ Kanalga qo‘shilish`, url: `https://t.me/${channel.slice(1)}` }];
       });
+
+      buttons.push([{ text: "✅ Tasdiqladim" }]); // Yangi tugma
 
       const replyMarkup = {
         inline_keyboard: buttons
       };
 
-      bot.sendMessage(chatId, "❗ Iltimos, quyidagi kanallarga qo‘shiling:", { reply_markup: replyMarkup });
+      bot.sendMessage(chatId, "❗ Iltimos, quyidagi kanallarga qo‘shiling, so‘ng '✅ Tasdiqladim' tugmasini bosing:", {
+        reply_markup: replyMarkup
+      });
     }
 
   } catch (error) {

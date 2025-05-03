@@ -5,18 +5,10 @@ const bot = new TelegramBot(token, { polling: true });
 
 // Tekshiruvchi kanallar
 const channels = ['@kinolifechannel'];
-const mainChannelId = '@kjbljblblblbhblhbhgguyg';  
+const mainChannelId = '@kjbljblblblbhblhbhgguyg';  // bu yerda to‘g‘ri kanal username bo‘lishi kerak
 
 
-// A'zolikni tekshiruvchi funksiya
-const checkMembership = async (channel, userId) => {
-  try {
-    const member = await bot.getChatMember(channel, userId);
-    return ['member', 'administrator', 'creator'].includes(member.status);
-  } catch (error) {
-    return false;
-  }
-};
+
 
 // Message kelganda ishlovchi funksiya
 bot.on('message', async (msg) => {

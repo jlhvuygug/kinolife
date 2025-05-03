@@ -1,37 +1,26 @@
 const TelegramBot = require('node-telegram-bot-api');
 
-const token = '7584847014:AAE6RZO72G7jVJ7JMwQmkhbifOaD9Xz7Vfs';
+const token = '7584847014:AAE6RZO72G7jVJ7JMwQmkhbifOaD9Xz7Vfs'
 const bot = new TelegramBot(token, { polling: true });
 
-// Tekshiruvchi kanallar
-const channels = ['@kinolifechannel'];
-const mainChannelId = '@kjbljblblblbhblhbhgguyg';  // bu yerda to‘g‘ri kanal username bo‘lishi kerak
+const channels = ['@kinolifechannel']; // Azo bo'lish kerak bo'lgan kanallar
+const mainChannelId = '@kjbljblblblbhblhbhgguyg'
 
-
-
-
-// Message kelganda ishlovchi funksiya
+// Foydalanuvchi xabar yozganda yoki /start yuborganda
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
   const text = msg.text;
 
-  // Foydalanuvchi "✅ Tasdiqladim" tugmasini bosganda
+  // Faqatgina "✅ Tasdiqladim" uchun alohida funksiya
   if (text === '✅ Tasdiqladim') {
     return await handleSubscriptionCheck(chatId, userId);
   }
 
-  // Oddiy holat
   try {
-    let notJoinedChannels = [];
-
-    for (let channel of channels) {
-      const isMember = await checkMembership(channel, userId);
-      if (!isMember) notJoinedChannels.push(channel);
-    }
-
+    const notJoinedChannels = await getNotJoinedChannels(userId);
     if (notJoinedChannels.length === 0) {
-      // Kino kodi bo'lsa
+      // Kino kodi kiritilganmi?
       if (!isNaN(text)) {
         try {
           await bot.copyMessage(chatId, mainChannelId, text);
@@ -40,7 +29,7 @@ bot.on('message', async (msg) => {
           bot.sendMessage(chatId, "❌ Kino topilmadi yoki xatolik yuz berdi.");
         }
       } else {
-        bot.sendMessage(chatId, "✅ Siz kanallarga a'zo bo'lgansiz. Iltimos, kino kodini kiriting (masalan: 5).");
+        bot.sendMessage(chatId, "🎬 Iltimos, kino kodini kiriting (masalan: 5).");
       }
     } else {
       sendJoinRequest(chatId, notJoinedChannels);
@@ -51,35 +40,49 @@ bot.on('message', async (msg) => {
   }
 });
 
-// Tekshiruvni qayta bajaruvchi funksiya
-async function handleSubscriptionCheck(chatId, userId) {
-  let notJoinedChannels = [];
-
+// A'zolikni tekshiruvchi yordamchi funksiya
+async function getNotJoinedChannels(userId) {
+  const notJoined = [];
   for (let channel of channels) {
     const isMember = await checkMembership(channel, userId);
-    if (!isMember) notJoinedChannels.push(channel);
+    if (!isMember) notJoined.push(channel);
   }
+  return notJoined;
+}
+
+// Tekshiruvdan keyingi javob
+async function handleSubscriptionCheck(chatId, userId) {
+  const notJoinedChannels = await getNotJoinedChannels(userId);
 
   if (notJoinedChannels.length === 0) {
-    bot.sendMessage(chatId, "✅ Endi siz barcha kanallarga a'zo bo'lgansiz. Iltimos, kino kodini kiriting.");
+    bot.sendMessage(chatId, "✅ Endi siz barcha kanallarga a'zo bo‘lgansiz. Iltimos, kino kodini kiriting.");
   } else {
     sendJoinRequest(chatId, notJoinedChannels);
   }
 }
 
-// Kanallarga a’zo bo‘lish tugmalari
-function sendJoinRequest(chatId, notJoinedChannels) {
-  const buttons = notJoinedChannels.map(channel => {
-    return [{ text: `➕ Kanalga qo‘shilish`, url: `https://t.me/${channel.slice(1)}` }];
+// A'zolikni tekshiruvchi funksiya
+async function checkMembership(channel, userId) {
+  try {
+    const res = await bot.getChatMember(channel, userId);
+    return ['member', 'administrator', 'creator'].includes(res.status);
+  } catch (err) {
+    console.error(`checkMembership error for ${channel}:`, err.message);
+    return false;
+  }
+}
+
+// Kanalga a’zo bo‘lish tugmalari va “Tasdiqladim” tugmasi
+function sendJoinRequest(chatId, channels) {
+  const buttons = channels.map(channel => {
+    return [{ text: `➕ ${channel}`, url: `https://t.me/${channel.slice(1)}` }];
   });
 
-  buttons.push([{ text: "✅ Tasdiqladim" }]);
+  buttons.push([{ text: "✅ Tasdiqladim", callback_data: "check" }]);
 
-  const replyMarkup = {
-    inline_keyboard: buttons
-  };
-
-  bot.sendMessage(chatId, "❗ Iltimos, quyidagi kanallarga qo‘shiling va so'ng '✅ Tasdiqladim' tugmasini bosing:", {
-    reply_markup: replyMarkup
+  bot.sendMessage(chatId, "📢 Iltimos, quyidagi kanallarga a’zo bo‘ling va so‘ng '✅ Tasdiqladim' tugmasini bosing:", {
+    reply_markup: {
+      inline_keyboard: buttons
+    }
   });
 }

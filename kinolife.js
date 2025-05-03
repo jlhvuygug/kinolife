@@ -1,84 +1,67 @@
-const TelegramBot = require('node-telegram-bot-api');
+let TelegramBot = require('node-telegram-bot-api');
 
-// Bot tokenini o'rnating
 const token = '7584847014:AAE6RZO72G7jVJ7JMwQmkhbifOaD9Xz7Vfs';
-
-// Botni polling usulida ishga tushiramiz
 const bot = new TelegramBot(token, { polling: true });
 
-// Kanallar ro'yxati (kanal username'lari)
+// Kanal username'lari
 const channels = ['@kinolifechannel'];
 
-// Foydalanuvchiga kanal a'zoligini tekshirish
-async function checkMembership(userId) {
-  for (let i = 0; i < channels.length; i++) {
-    try {
-      const member = await bot.getChatMember(channels[i], userId);
-      if (
-        member.status === 'member' ||
-        member.status === 'administrator' ||
-        member.status === 'creator'
-      ) {
-        // A'zo bo'lsa davom etamiz
-        continue;
-      } else {
-        return false;
-      }
-    } catch (error) {
-      return false;
-    }
-  }
-  return true;
-}
+// Yopiq kanal chat ID (masalan: -1001234567890)
+const mainChannelId = -1001234567890;
 
-// Foydalanuvchi xabar yuborganda
+// A'zolikni tekshiruvchi funksiya
+const checkMembership = async (channel, userId) => {
+  try {
+    const member = await bot.getChatMember(channel, userId);
+    return ['member', 'administrator', 'creator'].includes(member.status);
+  } catch (error) {
+    return false;
+  }
+};
+
+// Message kelganda ishlovchi funksiya
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const userId = msg.from.id;
+  const text = msg.text;
 
-  if (msg.text === '/check') {
-    const isMember = await checkMembership(userId);
+  try {
+    // 1. A'zolikni tekshirish
+    let notJoinedChannels = [];
+    for (let channel of channels) {
+      const isMember = await checkMembership(channel, userId);
+      if (!isMember) {
+        notJoinedChannels.push(channel);
+      }
+    }
 
-    if (isMember) {
-      bot.sendMessage(chatId, "✅ Siz kanalga a'zo bo'lgansiz!");
+    // 2. Agar barcha kanallarga a'zo bo'lsa
+    if (notJoinedChannels.length === 0) {
+      if (!isNaN(text)) {
+        try {
+          await bot.copyMessage(chatId, mainChannelId, text);
+        } catch (err) {
+          console.error(err);
+          bot.sendMessage(chatId, "❌ Kino topilmadi yoki xatolik yuz berdi.");
+        }
+      } else {
+        bot.sendMessage(chatId, "✅ Siz kanallarga a'zo bo'lgansiz. Kino kodi yuboring (masalan: 5)!");
+      }
     } else {
-      const inlineKeyboard = [
-        [
-          {
-            text: "📢 Kanalga a'zo bo'lish",
-            url: 'https://t.me/kinolifechannel',
-          },
-        ],
-        [
-          {
-            text: '🔄 Tekshirish',
-            callback_data: 'check_membership',
-          },
-        ],
-      ];
-
-      bot.sendMessage(chatId, "❗ Iltimos, quyidagi kanalga a'zo bo'ling:", {
-        reply_markup: { inline_keyboard: inlineKeyboard },
+      // 3. A'zo bo'lmagan kanallar ro'yxati
+      let buttons = notJoinedChannels.map(channel => {
+        return [{ text: `➕ Kanalga qo‘shilish`, url: `https://t.me/${channel.slice(1)}` }];
       });
-    }
-  }
-});
 
-// Callback tugmani ushlash (alohida joyda bo'lishi kerak!)
-bot.on('callback_query', async (callbackQuery) => {
-  const chatId = callbackQuery.message.chat.id;
-  const userId = callbackQuery.from.id;
+      const replyMarkup = {
+        inline_keyboard: buttons
+      };
 
-  if (callbackQuery.data === 'check_membership') {
-    const isMember = await checkMembership(userId);
-
-    if (isMember) {
-      bot.sendMessage(chatId, "✅ Siz kanalga a'zo bo'lgansiz!");
-    } else {
-      bot.sendMessage(chatId, "❗ Siz hali kanalga a'zo bo'lmadingiz. Iltimos, a'zo bo'ling.");
+      bot.sendMessage(chatId, "❗ Iltimos, quyidagi kanallarga qo‘shiling:", { reply_markup: replyMarkup });
     }
 
-    // Callback query ga javob yuborish (error chiqmasligi uchun)
-    bot.answerCallbackQuery(callbackQuery.id);
+  } catch (error) {
+    console.error(error);
+    bot.sendMessage(chatId, "❌ Xatolik yuz berdi: " + error.message);
   }
 });

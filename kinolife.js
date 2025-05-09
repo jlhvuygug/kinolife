@@ -3,7 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const token = '7584847014:AAE6RZO72G7jVJ7JMwQmkhbifOaD9Xz7Vfs'
 const bot = new TelegramBot(token, { polling: true });
 
-const channels = ['@kinolifechannel',"@UzHamyonbop"]                          
+const channels = ['@kinolifechannel',"@onlene_ish_uz","@kinolifeuz01","stavka_uz_ozod"]                          
 const mainChannelId = '@kjbljblblblbhblhbhgguyg'
 
 // A'zolikni tekshiruvchi funksiya
